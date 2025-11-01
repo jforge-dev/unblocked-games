@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Pongi</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="../jquery.min.js"></script>
+</head>
+<style>
+body, html{
+	height: calc(100% - 8px);
+}
+canvas{
+	height: calc(100% - 8px);
+	width: 100%;
+	background-color: black;
+}
+</style>
+<body>
+<canvas id="canvas">
+</canvas>
+
+</body>
+<script>
+var synth = window.speechSynthesis;
+var voices = synth.getVoices();
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var raf;
+var flag = true;
+var pause = false;
+var arr = [false,false,false,false];
+var isFirstTime = [true, true];
+var timer = {
+	x: 20,
+	y: 20,
+	tempo: 100,
+	draw: function(){
+		ctx.font = "15px Arial";
+		ctx.fillText(this.tempo, this.x, this.y);
+	}
+}
+var ball = {
+  x: canvas.width/2,
+  y: canvas.height/2,
+  vx: 2,
+  vy: 2,
+  radius: 3,
+  cor: 'white',
+  draw: function() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fillStyle = this.cor;
+    ctx.fill();
+  }
+};
+var raquete = {
+	x: 5,
+	y: canvas.height/2,
+	vy: 2,
+	draw: function(){
+		ctx.fillRect(this.x, this.y, 5, 30);
+	}
+}; 
+var raquete2 = {
+	x: canvas.width - 10,
+	y: canvas.height/2,
+	vy: 2,
+	draw: function(){
+		ctx.fillRect(this.x, this.y, 5, 30);
+	}
+};
+var risco = {
+	x: canvas.width/2,
+	y: 0,
+	altura: canvas.height,
+	draw: function(){
+		ctx.fillRect(this.x,this.y,1, this.altura);
+	}
+}
+var score = {
+	x: canvas.width/2 + 15,
+	y: 15,
+	pontuacao: 0,
+	draw: function(){
+		ctx.font = "15px Arial";
+		ctx.fillText(this.pontuacao, this.x, this.y);
+	}
+}
+var score2 = {
+	x: canvas.width/2 - 25,
+	y: 15,
+	pontuacao: 0,
+	draw: function(){
+		ctx.font = "15px Arial";
+		ctx.fillText(this.pontuacao, this.x, this.y);
+	}
+}
+var trigger = {
+	isAtivo: false,
+	draw: function(){
+		ctx.font = "15px Arial";
+		ctx.fillText('TRIGGERED', canvas.width/2, canvas.height/2);
+	}
+}
+function iniciarJogo() {
+	if(Math.random() > 0.5){
+		ball.vy = -ball.vy;
+		ball.vx = -ball.vx;
+	}
+	draw();
+}
+function especial(tecla, jogador){
+	if(tecla && isFirstTime[jogador]){
+		trigger.isAtivo = true;
+		ball.vy += 25;
+		ball.cor = 'red';
+		var utterThis = new SpeechSynthesisUtterance('TRIGGERED');
+		utterThis.voice = voices[0];
+		synth.speak(utterThis);
+		trigger.draw();
+	}
+	isFirstTime[jogador] = false;		
+}
+function iniciarContagemRegressiva(){
+	if(flag && !pause){
+		setTimeout(function(){
+			timer.tempo -= 1;
+			iniciarContagemRegressiva();
+		}, 1000);
+	}
+	if(timer.tempo == 0){
+		flag = false;
+	}
+}
+function draw() {
+  	ctx.clearRect(0,0, canvas.width, canvas.height);
+	if(arr[0]){
+  		if(raquete.y > 0){
+			raquete.y -= raquete.vy;
+		}
+  	}
+  	if(arr[1]){
+  		if(raquete.y < (canvas.height-30)){
+  			raquete.y += raquete.vy;
+  		}
+  	}
+  	if(arr[2]){
+  		if(raquete2.y > 0){
+			raquete2.y -= raquete2.vy;
+		}
+  	}
+  	if(arr[3]){
+  		if(raquete2.y < (canvas.height-30)){
+  			raquete2.y += raquete2.vy;
+  		}
+  	}
+  	if (ball.y + ball.vy > canvas.height || ball.y + ball.vy < 0) {
+	  ball.vy = -ball.vy;
+	}
+	if ((ball.x >= raquete.x && ball.x <= (raquete.x + 5) && ball.y >= raquete.y && ball.y <= (raquete.y + 30)) || (ball.x >= raquete2.x && ball.x <= (raquete2.x + 5) && ball.y >= raquete2.y && ball.y <= (raquete2.y + 30))) {
+	  ball.vx = -ball.vx;
+	  if((ball.y <= (raquete.y+1) || ball.y <= (raquete2.y+1) || ball.y >= (raquete.y-1) || ball.y >= (raquete2.y-1))){
+			ball.vx -= 0.2;
+			ball.vy -= 0.2;
+	  }
+	  especial();
+	}
+	if (ball.x <= 0){
+		score.pontuacao++;
+		ball.x = canvas.width/2;
+		ball.y = canvas.height/2;
+		var utterThis = new SpeechSynthesisUtterance('GOL DO PRIMEIRO JOGADOR');
+		utterThis.voice = voices[0];
+		synth.speak(utterThis);
+		ball.vx = 2;
+		ball.vy = 2;
+		ball.cor = 'white';
+		trigger.isAtivo = false;
+	}
+	if (ball.x >= canvas.width){
+		score2.pontuacao++;
+		ball.x = canvas.width/2;
+		ball.y = canvas.height/2;
+		var utterThis = new SpeechSynthesisUtterance('GOL DO SEGUNDO JOGADOR');
+		utterThis.voice = voices[0];
+		synth.speak(utterThis);
+		ball.vx = 2;
+		ball.vy = 2;
+		ball.cor = 'white';
+		trigger.isAtivo = false;
+	}
+  	ball.draw();
+  	ball.x += ball.vx;
+  	ball.y += ball.vy;
+	if(flag && pause==false){
+	  raf = window.requestAnimationFrame(draw);
+	}
+  	score.draw();
+  	score2.draw();
+  	raquete.draw();
+  	raquete2.draw();
+  	risco.draw();
+	timer.draw();
+	if(trigger.isAtivo){
+		trigger.draw();
+	}
+}
+$(document).ready(function(){
+	$(document).keydown(function(e){
+		var auxPause = pause;
+		if(e.keyCode == 87){
+			arr[0] = true;
+		}
+		if(e.keyCode == 83){
+			arr[1] = true;
+		}
+		if(e.keyCode == 79){
+			arr[2] = true;
+		}
+		if(e.keyCode == 76){
+			arr[3] = true;
+		}
+		if(e.keyCode == 80){
+			if(auxPause == false){
+				pause = true;
+			}
+			if(auxPause == true){
+				pause = false;
+				draw();
+				iniciarContagemRegressiva();
+			}
+		}
+		if(e.keyCode == 69){
+			especial(true, 0);
+		}
+		if(e.keyCode == 73){
+			especial(true, 1);
+		}
+	});
+	$(document).keyup(function(e){
+		if(e.keyCode == 87){
+			arr[0] = false;
+		}
+		if(e.keyCode == 83){
+			arr[1] = false;
+		}
+		if(e.keyCode == 79){
+			arr[2] = false;
+		}
+		if(e.keyCode == 76){
+			arr[3] = false;
+		}
+	});
+});
+iniciarContagemRegressiva();
+iniciarJogo();
+</script>
+</html>
